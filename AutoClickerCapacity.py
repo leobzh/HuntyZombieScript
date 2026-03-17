@@ -4,6 +4,95 @@ import tkinter as tk
 import random
 from pynput import keyboard
 from pynput.mouse import Controller as MouseController, Button
+import requests
+import os
+import sys
+import time
+
+
+# ------- MAJ -------
+# -------- CONFIG UPDATE --------
+VERSION_FILE = "version.txt"
+SCRIPT_NAME = os.path.basename(__file__)
+
+GITHUB_VERSION_URL = "https://raw.githubusercontent.com/leobzh/HuntyZombieScript/main/Version.txt"
+GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/leobzh/HuntyZombieScript/main/AutoClickerCapacity.py"
+
+
+def get_local_version():
+    if not os.path.exists(VERSION_FILE):
+        return "0"
+    with open(VERSION_FILE, "r") as f:
+        return f.read().strip()
+
+
+def get_remote_version():
+    try:
+        r = requests.get(GITHUB_VERSION_URL, timeout=5)
+        return r.text.strip()
+    except:
+        return None
+
+
+def download_file(url):
+    try:
+        r = requests.get(url, timeout=10)
+        return r.text
+    except:
+        return None
+
+
+def update():
+    print("🔄 Mise à jour...")
+
+    new_script = download_file(GITHUB_SCRIPT_URL)
+    new_version = download_file(GITHUB_VERSION_URL)
+
+    if not new_script or not new_version:
+        print("❌ Erreur téléchargement")
+        return
+
+    # écrire nouveau script temporaire
+    with open("update_tmp.py", "w", encoding="utf-8") as f:
+        f.write(new_script)
+
+    # écrire version
+    with open(VERSION_FILE, "w") as f:
+        f.write(new_version)
+
+    # remplacer script actuel
+    os.replace("update_tmp.py", SCRIPT_NAME)
+
+    print("✅ Mise à jour terminée")
+
+    # relancer
+    time.sleep(1)
+    os.execv(sys.executable, ["python"] + [SCRIPT_NAME])
+
+
+def check_update():
+    local = get_local_version()
+    remote = get_remote_version()
+
+    if remote is None:
+        print("⚠️ Impossible de vérifier les mises à jour")
+        return
+
+    if local != remote:
+        print(f"🔔 Nouvelle version dispo : {remote}")
+        update()
+    else:
+        print("✅ Script à jour")
+
+
+# -------- LANCEMENT --------
+check_update()
+
+
+
+
+
+
 
 # -------- CONFIG --------
 ALL_KEYS = ["w", "x", "c"]
