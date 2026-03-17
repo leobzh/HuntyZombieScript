@@ -19,26 +19,33 @@ GITHUB_VERSION_URL = "https://raw.githubusercontent.com/leobzh/HuntyZombieScript
 GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/leobzh/HuntyZombieScript/main/AutoClickerCapacity.py"
 
 
-def get_local_version():
-    if not os.path.exists(VERSION_FILE):
-        return "0"
-    with open(VERSION_FILE, "r") as f:
-        return f.read().strip()
-
-
 def get_remote_version():
     try:
         r = requests.get(GITHUB_VERSION_URL, timeout=5)
-        return r.text.strip()
-    except:
+
+        if r.status_code == 200:
+            return r.text.strip()
+        else:
+            print(f"⚠️ Erreur version (HTTP {r.status_code})")
+            return None
+
+    except Exception as e:
+        print(f"⚠️ Erreur connexion: {e}")
         return None
 
 
 def download_file(url):
     try:
         r = requests.get(url, timeout=10)
-        return r.text
-    except:
+
+        if r.status_code == 200:
+            return r.text
+        else:
+            print(f"⚠️ Erreur téléchargement (HTTP {r.status_code})")
+            return None
+
+    except Exception as e:
+        print(f"⚠️ Erreur téléchargement: {e}")
         return None
 
 
@@ -48,34 +55,36 @@ def update():
     new_script = download_file(GITHUB_SCRIPT_URL)
     new_version = download_file(GITHUB_VERSION_URL)
 
-    if not new_script or not new_version:
-        print("❌ Erreur téléchargement")
+    # 👉 si erreur téléchargement → abandon
+    if new_script is None or new_version is None:
+        print("❌ Update annulé (erreur téléchargement)")
         return
 
-    # écrire nouveau script temporaire
-    with open("update_tmp.py", "w", encoding="utf-8") as f:
-        f.write(new_script)
+    try:
+        with open("update_tmp.py", "w", encoding="utf-8") as f:
+            f.write(new_script)
 
-    # écrire version
-    with open(VERSION_FILE, "w") as f:
-        f.write(new_version)
+        with open(VERSION_FILE, "w") as f:
+            f.write(new_version)
 
-    # remplacer script actuel
-    os.replace("update_tmp.py", SCRIPT_NAME)
+        os.replace("update_tmp.py", SCRIPT_NAME)
 
-    print("✅ Mise à jour terminée")
+        print("✅ Mise à jour terminée")
 
-    # relancer
-    time.sleep(1)
-    os.execv(sys.executable, ["python"] + [SCRIPT_NAME])
+        time.sleep(1)
+        os.execv(sys.executable, ["python"] + [SCRIPT_NAME])
+
+    except Exception as e:
+        print(f"❌ Erreur update: {e}")
 
 
 def check_update():
     local = get_local_version()
     remote = get_remote_version()
 
+    # 👉 si erreur (404 / offline / etc)
     if remote is None:
-        print("⚠️ Impossible de vérifier les mises à jour")
+        print("⚠️ Update ignoré (erreur GitHub)")
         return
 
     if local != remote:
